@@ -1,0 +1,243 @@
+{
+  "cells": [
+    {
+      "metadata": {
+        "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+        "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+        "trusted": true
+      },
+      "cell_type": "code",
+      "source": "# This Python 3 environment comes with many helpful analytics libraries installed\n# It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python\n# For example, here's several helpful packages to load in \n\nimport numpy as np # linear algebra\nimport pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)\n\n# Input data files are available in the \"../input/\" directory.\n# For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory\n\nimport os\nprint(os.listdir(\"../input\"))\n\n# Any results you write to the current directory are saved as output.",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "_cell_guid": "79c7e3d0-c299-4dcb-8224-4455121ee9b0",
+        "_uuid": "d629ff2d2480ee46fbb7e2d37f6b5fab8052498a",
+        "trusted": true
+      },
+      "cell_type": "code",
+      "source": "library(keras)\nlibrary(jsonlite)\nlibrary(tidyverse)",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "6315b18d74ff8d293e2d29effdddeb2c63a8f2aa"
+      },
+      "cell_type": "code",
+      "source": "## tidyverse pipes the pipline\nheadlines <- file(\"../input//Sarcasm_Headlines_Dataset.json\", open=\"r\") %>%\n    stream_in() %>%\n    as_data_frame()",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "f02038b794a9d5415ad447d51d7f97af7c6e7abc"
+      },
+      "cell_type": "code",
+      "source": "str(headlines)",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "59ea3bf0b3943eacb890329d528c11dfdd4a002e"
+      },
+      "cell_type": "code",
+      "source": "#building tokenizer\n\ntokenizer <- text_tokenizer(num_words=50000)#this calls the text tokenizer with 50000 most common words\ntokenizer %>% fit_text_tokenizer(headlines$headline)\n",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "677ad1ce06e3992a19bbde794f0b0de43716c9df"
+      },
+      "cell_type": "code",
+      "source": "save_text_tokenizer(tokenizer, 'tokenizer-sarcastic')\nheadline <- texts_to_sequences(tokenizer,headlines$headline)",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "8330851b88ea1f735df6c94b913f456961e7596b"
+      },
+      "cell_type": "code",
+      "source": "#mapping so that length each senstence in side the headlines object is know\nlibrary(purrr)\nheadline_length<-c(\n    map_int(headline,length)\n)\nquantile(headline_length,c(0.8,0.9,0.95,0.95))\n",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "d4d76708570ca888b3cccf6b50b4a2467c392a89"
+      },
+      "cell_type": "code",
+      "source": "headline_padded <- pad_sequences(headline,maxlen=20,value=50000+1)",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "8472b725a8db4d0b33f511bcd97dff0d8f991fe7"
+      },
+      "cell_type": "code",
+      "source": "input <- layer_input(shape=c(20),name='input_headline')",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "37529d374040939d44f46c0b2494de06216f2dcf"
+      },
+      "cell_type": "code",
+      "source": "word_embedder<- layer_embedding(input_dim=50002,\n                                output_dim=128,\n                                input_length=20,\n                                embeddings_regularizer=regularizer_l2(0.0001))",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "db5b88fcd784efbe60fea0608dface0d466047fd"
+      },
+      "cell_type": "code",
+      "source": "seq_embedder<- layer_lstm(\n               units=128,\n               kernel_regularizer=regularizer_l2(0.0001)\n)",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "1328ca89473c3bfd27b53467c95143ed0616a830"
+      },
+      "cell_type": "code",
+      "source": "output <- input%>%\n          word_embedder%>%\n          seq_embedder%>%\n          layer_dense(units = 1,activation ='sigmoid')\n",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "0fbe1d8678812d371a963dffaee6207b15e7be0f"
+      },
+      "cell_type": "code",
+      "source": "model<-keras_model(input,output)",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "5b77b951f6b31bfd1685714959b987236e1bed8d"
+      },
+      "cell_type": "code",
+      "source": "model%>%compile(\noptimizer=\"adam\",\n#metrics = metric_binary_crossentropy,\nmetrics  = c('accuracy'),    \nloss     =\"binary_crossentropy\"\n)",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "fe213383371a9e83dc561e0995a2a4f2a96c1175"
+      },
+      "cell_type": "code",
+      "source": "#test train spilit\nset.seed(42)\nval_sample <- sample.int(nrow(headline_padded),size=0.1*nrow(headline_padded))\n#10 percent testing set of all the dataset\n",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "9472917b63243baff0b3f76853cba40f94f32dbc"
+      },
+      "cell_type": "code",
+      "source": "#trainning layer\ntrain_headline_padded <- headline_padded[-val_sample,]\ntrain_is_sarcastic    <- headlines$is_sarcastic[-val_sample]\n#testing layer\nval_headline_padded   <- headline_padded[val_sample,]\nval_is_sarcastic      <- headlines$is_sarcastic[val_sample]",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "eb11ff1ce998814243333c3a985ae454a8c9f8cd"
+      },
+      "cell_type": "code",
+      "source": "summary(model)",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "02a296cb1b49c0107b275dfc1e87e8015ba35e4c"
+      },
+      "cell_type": "code",
+      "source": "history <- model %>% fit(\n           train_headline_padded,\n           train_is_sarcastic,\n           batch_size=64,\n           epochs=1,\n           validation_data=list(val_headline_padded,val_is_sarcastic)\n           )",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "1958491ed8884dad85e186041a0c885b9c717017"
+      },
+      "cell_type": "code",
+      "source": "plot(history)",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "b14b31b03fd405ac55505cb9779dc4369855fe4e"
+      },
+      "cell_type": "code",
+      "source": "score <- model%>% evaluate(\n    val_headline_padded,\n    val_is_sarcastic,\n    verbose=1\n)",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "9c90fa61894ab771298b027388b022c218fd9756"
+      },
+      "cell_type": "code",
+      "source": "score",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "trusted": true,
+        "_uuid": "84b0a33014760f3f65dde89aeb301f119138f55b"
+      },
+      "cell_type": "code",
+      "source": "#get the ",
+      "execution_count": null,
+      "outputs": []
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "display_name": "R",
+      "language": "R",
+      "name": "ir"
+    },
+    "language_info": {
+      "mimetype": "text/x-r-source",
+      "name": "R",
+      "pygments_lexer": "r",
+      "version": "3.4.2",
+      "file_extension": ".r",
+      "codemirror_mode": "r"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 1
+}
