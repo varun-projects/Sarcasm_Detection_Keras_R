@@ -1,4 +1,4 @@
-# sarcasm_detection_keras_R
+# Sarcasm Detection In R
 1. Please access an excute the iPython notebook from the URL:
 https://www.kaggle.com/varun13/kernel3ca99a05f2
 
